@@ -70,6 +70,7 @@ function updateTimer() {
 }
 
 // Инициализация игры
+// Инициализация игры
 function initGame() {
   const { size, mines } = difficulties[difficulty];
   
@@ -124,9 +125,9 @@ function initGame() {
   gameContainer.appendChild(boardElement);
   
   // Генерируем мины
-  const mines = new Set();
-  while (mines.size < difficulties[difficulty].mines) {
-    mines.add(Math.floor(Math.random() * size * size));
+  const minesPositions = new Set();
+  while (minesPositions.size < mines) {
+    minesPositions.add(Math.floor(Math.random() * size * size));
   }
   
   // Создаем ячейки
@@ -134,7 +135,7 @@ function initGame() {
     const cell = document.createElement('div');
     cell.classList.add('cell');
     cell.dataset.index = i;
-    cell.dataset.mine = mines.has(i) ? 'true' : 'false';
+    cell.dataset.mine = minesPositions.has(i) ? 'true' : 'false';
     
     // Левый клик для открытия ячейки
     cell.addEventListener('click', (e) => {
