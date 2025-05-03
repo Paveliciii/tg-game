@@ -9,6 +9,7 @@ const WEBAPP_URL = process.env.WEBAPP_URL;
 
 app.use(express.json());
 app.use(express.static('public'));
+app.use('/frontend', express.static('frontend'));
 
 // Telegram webhook
 app.post(`/webhook/${BOT_TOKEN}`, async (req, res) => {
@@ -36,4 +37,4 @@ app.post(`/webhook/${BOT_TOKEN}`, async (req, res) => {
   res.sendStatus(200);
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`)); 
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
