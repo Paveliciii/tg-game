@@ -1,0 +1,21 @@
+{
+    "name": "tg-game",
+    "version": "1.0.0",
+    "description": "Telegram Minesweeper Game",
+    "main": "backend/index.js",
+    "scripts": {
+      "start": "node backend/index.js",
+      "dev": "nodemon backend/index.js"
+    },
+    "dependencies": {
+      "express": "^4.18.2",
+      "node-fetch": "^2.6.9",
+      "dotenv": "^16.0.3"
+    },
+    "devDependencies": {
+      "nodemon": "^2.0.22"
+    },
+    "engines": {
+      "node": ">=14.0.0"
+    }
+  }
