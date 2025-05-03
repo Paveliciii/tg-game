@@ -1,0 +1,39 @@
+body {
+  font-family: sans-serif;
+  text-align: center;
+  padding: 20px;
+  background: #f2f2f2;
+}
+
+#game {
+  display: grid;
+  grid-template-columns: repeat(5, 40px);
+  grid-gap: 5px;
+  justify-content: center;
+  margin: 20px auto;
+}
+
+.cell {
+  width: 40px;
+  height: 40px;
+  background: #ccc;
+  border: 1px solid #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  user-select: none;
+}
+
+.cell.revealed {
+  background: #fff;
+}
+
+.cell.mine {
+  background: #ff4444;
+}
+
+.cell.flagged {
+  background: #ffeb3b;
+} 
