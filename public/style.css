@@ -3,11 +3,75 @@ body {
   text-align: center;
   padding: 20px;
   background: #f2f2f2;
+  color: #333;
 }
 
 #game {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Выбор сложности */
+.difficulty-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px auto;
+  max-width: 300px;
+}
+
+.difficulty-button {
+  padding: 12px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.difficulty-button:hover {
+  background: #3e8e41;
+}
+
+/* Заголовок игры */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background: #ddd;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+#timer, #flag-counter {
+  font-size: 18px;
+  font-weight: bold;
+  padding: 5px 10px;
+  background: #fff;
+  border-radius: 5px;
+  min-width: 60px;
+}
+
+#restart-button, #back-button {
+  background: #607D8B;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 20px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+#restart-button:hover, #back-button:hover {
+  background: #455A64;
+}
+
+/* Игровое поле */
+#board {
   display: grid;
-  grid-template-columns: repeat(5, 40px);
   grid-gap: 5px;
   justify-content: center;
   margin: 20px auto;
@@ -24,6 +88,7 @@ body {
   justify-content: center;
   font-weight: bold;
   user-select: none;
+  font-size: 18px;
 }
 
 .cell.revealed {
@@ -32,8 +97,37 @@ body {
 
 .cell.mine {
   background: #ff4444;
+  position: relative;
+}
+
+.cell.mine:after {
+  content: '💣';
+  font-size: 20px;
 }
 
 .cell.flagged {
-  background: #ffeb3b;
-} 
+  position: relative;
+}
+
+.cell.flagged:after {
+  content: '🚩';
+  font-size: 20px;
+}
+
+.cell.correct-flag {
+  background: #4CAF50;
+}
+
+.cell.wrong-flag {
+  background: #ff4444;
+}
+
+/* Цветовое кодирование цифр */
+.cell-1 { color: blue; }
+.cell-2 { color: green; }
+.cell-3 { color: red; }
+.cell-4 { color: darkblue; }
+.cell-5 { color: brown; }
+.cell-6 { color: teal; }
+.cell-7 { color: black; }
+.cell-8 { color: gray; }
