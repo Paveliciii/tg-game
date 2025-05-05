@@ -34,6 +34,34 @@ let isLongPress = false;
 const tg = window.Telegram.WebApp;
 tg.expand();
 
+// Глобальные переменные
+let gameBoard = [];
+let moves = [];
+
+// DOM элементы
+const modal = document.getElementById('modal');
+const openModalBtn = document.getElementById('openModal');
+const closeModalBtn = document.getElementById('closeModal');
+const startBtn = document.getElementById('startBtn');
+const helpBtn = document.getElementById('help');
+const closeHelpBtn = document.getElementById('close-help');
+const viewPastGamesBtn = document.getElementById('view-past-games');
+const closeHistoryBtn = document.getElementById('close-history');
+const helpContainer = document.getElementById('help-container');
+const pastGamesContainer = document.getElementById('past-games-container');
+const errorMessageDiv = document.getElementById('error-message');
+const gameBoardDiv = document.getElementById('game-board');
+const gameStatusDiv = document.getElementById('game-status');
+
+// Обработчики событий
+openModalBtn.addEventListener('click', () => modal.showModal());
+closeModalBtn.addEventListener('click', () => modal.close());
+startBtn.addEventListener('click', startNewGame);
+helpBtn.addEventListener('click', () => helpContainer.style.display = 'block');
+closeHelpBtn.addEventListener('click', () => helpContainer.style.display = 'none');
+viewPastGamesBtn.addEventListener('click', showPastGames);
+closeHistoryBtn.addEventListener('click', () => pastGamesContainer.style.display = 'none');
+
 // Начальный экран с выбором сложности
 function showDifficultySelection() {
   gameContainer.innerHTML = '';
@@ -402,6 +430,225 @@ function checkWin() {
     tg.showAlert(message);
   }
 }
+
+// Функция начала новой игры
+function startNewGame() {
+    width = parseInt(document.getElementById('width').value);
+    height = parseInt(document.getElementById('height').value);
+    mineCount = parseInt(document.getElementById('mines').value);
+
+    if (mineCount >= width * height) {
+        showError('Количество мин не может быть больше или равно количеству клеток');
+        return;
+    }
+
+    if (width < 5 || height < 5 || width > 16 || height > 16) {
+        showError('Размер поля должен быть от 5x5 до 16x16');
+        return;
+    }
+
+    modal.close();
+    initializeGame();
+}
+
+// Инициализация игры
+function initializeGame() {
+    gameOver = false;
+    moves = [];
+    revealed = Array(width).fill().map(() => Array(height).fill(false));
+    mines = Array(width).fill().map(() => Array(height).fill(false));
+    gameBoard = [];
+    
+    // Очищаем статус игры
+    gameStatusDiv.textContent = '';
+    
+    // Создаем игровое поле
+    createBoard();
+    
+    // Размещаем мины
+    placeMines();
+}
+
+// Создание игрового поля
+function createBoard() {
+    gameBoardDiv.innerHTML = '';
+    gameBoardDiv.style.gridTemplateColumns = `repeat(${width}, 35px)`;
+    
+    for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.dataset.x = x;
+            cell.dataset.y = y;
+            
+            cell.addEventListener('click', () => handleClick(x, y));
+            
+            gameBoardDiv.appendChild(cell);
+            gameBoard.push(cell);
+        }
+    }
+}
+
+// Размещение мин
+function placeMines() {
+    let placedMines = 0;
+    while (placedMines < mineCount) {
+        const x = Math.floor(Math.random() * width);
+        const y = Math.floor(Math.random() * height);
+        
+        if (!mines[x][y]) {
+            mines[x][y] = true;
+            placedMines++;
+        }
+    }
+}
+
+// Обработка клика по клетке
+function handleClick(x, y) {
+    if (gameOver || revealed[x][y]) return;
+    
+    // Записываем ход
+    moves.push({ x, y, result: mines[x][y] ? 'Мина' : 'Безопасно' });
+    
+    if (mines[x][y]) {
+        gameOver = true;
+        revealAll();
+        gameStatusDiv.textContent = '💥 Игра окончена!';
+        tg.showPopup({
+            title: 'Игра окончена',
+            message: '💥 Вы попали на мину!',
+            buttons: [{
+                type: 'ok',
+                text: 'Новая игра'
+            }]
+        }).then(() => {
+            modal.showModal();
+        });
+        saveGame(false);
+    } else {
+        reveal(x, y);
+        if (checkWin()) {
+            gameOver = true;
+            gameStatusDiv.textContent = '🎉 Победа!';
+            tg.showPopup({
+                title: 'Победа!',
+                message: '🎉 Поздравляем! Вы нашли все мины!',
+                buttons: [{
+                    type: 'ok',
+                    text: 'Новая игра'
+                }]
+            }).then(() => {
+                modal.showModal();
+            });
+            saveGame(true);
+        }
+    }
+}
+
+// Открытие клетки
+function reveal(x, y) {
+    if (x < 0 || x >= width || y < 0 || y >= height || revealed[x][y]) return;
+    
+    revealed[x][y] = true;
+    const cell = gameBoard[x * height + y];
+    cell.classList.add('revealed');
+    
+    const nearbyMines = countNearbyMines(x, y);
+    if (nearbyMines === 0) {
+        // Если рядом нет мин, открываем соседние клетки
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                reveal(x + dx, y + dy);
+            }
+        }
+    } else {
+        cell.textContent = nearbyMines;
+        cell.classList.add(`color-${nearbyMines}`);
+    }
+}
+
+// Подсчет мин вокруг клетки
+function countNearbyMines(x, y) {
+    let count = 0;
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const newX = x + dx;
+            const newY = y + dy;
+            if (newX >= 0 && newX < width && newY >= 0 && newY < height && mines[newX][newY]) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+// Открытие всех клеток
+function revealAll() {
+    for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+            const cell = gameBoard[x * height + y];
+            cell.classList.add('revealed');
+            if (mines[x][y]) {
+                cell.classList.add('mine');
+            } else {
+                const nearbyMines = countNearbyMines(x, y);
+                if (nearbyMines > 0) {
+                    cell.textContent = nearbyMines;
+                    cell.classList.add(`color-${nearbyMines}`);
+                }
+            }
+        }
+    }
+}
+
+// Проверка победы
+function checkWin() {
+    for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+            if (!mines[x][y] && !revealed[x][y]) return false;
+        }
+    }
+    return true;
+}
+
+// Сохранение игры
+function saveGame(isWin) {
+    const gameData = {
+        timestamp: new Date().toISOString(),
+        size: `${width}x${height}`,
+        mines: mineCount,
+        moves: moves,
+        result: isWin ? 'Победа' : 'Поражение'
+    };
+    
+    let games = JSON.parse(localStorage.getItem('minesweeper_games') || '[]');
+    games.unshift(gameData);
+    localStorage.setItem('minesweeper_games', JSON.stringify(games.slice(0, 10))); // Храним только 10 последних игр
+}
+
+// Показ прошлых игр
+function showPastGames() {
+    const games = JSON.parse(localStorage.getItem('minesweeper_games') || '[]');
+    const gameList = document.getElementById('game-list');
+    gameList.innerHTML = '';
+    
+    games.forEach(game => {
+        const li = document.createElement('li');
+        const date = new Date(game.timestamp);
+        li.textContent = `${date.toLocaleDateString()} ${date.toLocaleTimeString()} - ${game.size} - ${game.mines} мин - ${game.result}`;
+        gameList.appendChild(li);
+    });
+    
+    pastGamesContainer.style.display = 'block';
+}
+
+// Вспомогательные функции
+function showError(message) {
+    errorMessageDiv.textContent = message;
+}
+
+// Инициализация при загрузке страницы
+modal.showModal();
 
 // Запускаем игру с экрана выбора сложности
 showDifficultySelection();
