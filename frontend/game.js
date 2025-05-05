@@ -148,24 +148,36 @@ function calcNear(x, y) {
 
 // Открытие клетки
 function reveal(x, y) {
-  if (outBounds(x, y)) return;
-  if (revealed[x][y]) return;
-  if (flags[x][y]) return;
-
+  console.log('Revealing:', x, y);
+  
+  if (x < 0 || x >= gridW || y < 0 || y >= gridH || 
+      revealed[x][y] || flags[x][y]) {
+    return;
+  }
+  
+  const cellIndex = x * gridH + y;
+  const cell = board[cellIndex];
+  
   revealed[x][y] = true;
-  updateCellAppearance(x, y);
-
-  if (calcNear(x, y) !== 0) return;
-
-  // Если вокруг нет мин, открываем соседние клетки
-  reveal(x - 1, y - 1);
-  reveal(x - 1, y + 1);
-  reveal(x + 1, y - 1);
-  reveal(x + 1, y + 1);
-  reveal(x - 1, y);
-  reveal(x + 1, y);
-  reveal(x, y - 1);
-  reveal(x, y + 1);
+  cell.classList.add('revealed');
+  
+  const nearbyMines = calcNear(x, y);
+  console.log('Nearby mines:', nearbyMines);
+  
+  if (nearbyMines === 0) {
+    // Если рядом нет мин, открываем соседние клетки
+    reveal(x - 1, y - 1);
+    reveal(x - 1, y + 1);
+    reveal(x + 1, y - 1);
+    reveal(x + 1, y + 1);
+    reveal(x - 1, y);
+    reveal(x + 1, y);
+    reveal(x, y - 1);
+    reveal(x, y + 1);
+  } else {
+    cell.textContent = nearbyMines;
+    cell.classList.add(`cell-${nearbyMines}`);
+  }
 }
 
 // Обновление внешнего вида клетки
@@ -210,31 +222,40 @@ function clearMines() {
 }
 
 // Обработка клика по клетке
-function handleCellClick(x, y, event) {
-  if (gameOver) return;
+function handleCellClick(x, y) {
+  console.log('Click handler called:', x, y, gameState); // Отладочный вывод
   
-  const cell = gameBoard[x * height + y];
+  if (gameState.gameOver) {
+    console.log('Game is over');
+    return;
+  }
+  
+  const cellIndex = x * gameState.height + y;
+  const cell = gameState.gameBoard[cellIndex];
   
   // Если клетка уже открыта и на ней цифра, пробуем открыть соседние клетки
-  if (revealed[x][y] && cell.textContent) {
+  if (gameState.revealed[x][y] && cell.textContent) {
     handleChordClick(x, y);
     return;
   }
   
   // Если режим флажков активен
-  if (isFlagMode) {
+  if (gameState.isFlagMode) {
     toggleFlag(x, y);
     return;
   }
   
   // Нельзя открывать клетки с флажками
-  if (flags[x][y]) return;
+  if (gameState.flags[x][y]) {
+    console.log('Cell is flagged');
+    return;
+  }
   
-  // Записываем ход
-  moves.push({ x, y, result: mines[x][y] ? 'Мина' : 'Безопасно' });
+  console.log('Revealing cell:', x, y);
   
-  if (mines[x][y]) {
-    gameOver = true;
+  if (gameState.mines[x][y]) {
+    // Попали на мину
+    gameState.gameOver = true;
     revealAll();
     gameStatusDiv.textContent = '💥 Игра окончена!';
     tg.showPopup({
@@ -251,7 +272,7 @@ function handleCellClick(x, y, event) {
   } else {
     reveal(x, y);
     if (checkWin()) {
-      gameOver = true;
+      gameState.gameOver = true;
       gameStatusDiv.textContent = '🎉 Победа!';
       tg.showPopup({
         title: 'Победа!',
@@ -272,7 +293,7 @@ function handleCellClick(x, y, event) {
 function toggleFlag(x, y) {
   if (revealed[x][y]) return;
   
-  const cell = gameBoard[x * height + y];
+  const cell = board[x * gridH + y];
   
   if (flags[x][y]) {
     flags[x][y] = false;
@@ -531,6 +552,7 @@ function initializeGame() {
 function createBoard() {
     gameBoardDiv.innerHTML = '';
     gameBoardDiv.style.gridTemplateColumns = `repeat(${gameState.width}, 35px)`;
+    gameState.gameBoard = [];
     
     for (let x = 0; x < gameState.width; x++) {
         for (let y = 0; y < gameState.height; y++) {
@@ -539,17 +561,25 @@ function createBoard() {
             cell.dataset.x = x;
             cell.dataset.y = y;
             
-            cell.addEventListener('click', () => handleCellClick(x, y));
+            cell.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log(`Clicked cell at ${x},${y}`);
+                handleCellClick(x, y);
+            });
             
             gameBoardDiv.appendChild(cell);
             gameState.gameBoard.push(cell);
         }
     }
+    
+    console.log('Board created:', gameState.gameBoard.length, 'cells');
 }
 
 // Размещение мин
 function placeMines() {
     let placedMines = 0;
+    console.log('Placing mines:', gameState.mineCount);
+    
     while (placedMines < gameState.mineCount) {
         const x = Math.floor(Math.random() * gameState.width);
         const y = Math.floor(Math.random() * gameState.height);
@@ -557,6 +587,7 @@ function placeMines() {
         if (!gameState.mines[x][y]) {
             gameState.mines[x][y] = true;
             placedMines++;
+            console.log('Placed mine at:', x, y);
         }
     }
 }
