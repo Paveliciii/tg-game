@@ -334,26 +334,58 @@ function toggleFlag(x, y) {
 
 // Инициализация игры
 function initGame() {
-  const size = difficulties[difficulty].size;
-  numMines = difficulties[difficulty].mineCount;
-  gridW = size;
-  gridH = size;
-  
-  // Инициализация массивов
-  mines = Array(gridW).fill().map(() => Array(gridH).fill(0));
-  flags = Array(gridW).fill().map(() => Array(gridH).fill(false));
-  revealed = Array(gridW).fill().map(() => Array(gridH).fill(false));
-  
-  gameContainer.innerHTML = '';
-  board = [];
-  gameOver = false;
-  gameStarted = false;
-  
-  // Создаем интерфейс
-  createGameInterface();
-  
-  // Создаем игровое поле
-  createGameBoard();
+    console.log('Инициализация игры');
+    
+    // Получаем настройки для выбранной сложности
+    const settings = difficulties[difficulty];
+    
+    // Обновляем состояние игры
+    gameState.width = settings.size;
+    gameState.height = settings.size;
+    gameState.mineCount = settings.mineCount;
+    gameState.gameOver = false;
+    gameState.isFlagMode = false;
+    gameState.remainingMines = settings.mineCount;
+    
+    // Инициализируем массивы
+    gameState.mines = Array(settings.size).fill().map(() => Array(settings.size).fill(0));
+    gameState.revealed = Array(settings.size).fill().map(() => Array(settings.size).fill(false));
+    gameState.flags = Array(settings.size).fill().map(() => Array(settings.size).fill(false));
+    gameState.gameBoard = [];
+    
+    // Обновляем глобальные переменные для обратной совместимости
+    gridW = settings.size;
+    gridH = settings.size;
+    numMines = settings.mineCount;
+    mines = gameState.mines;
+    revealed = gameState.revealed;
+    flags = gameState.flags;
+    board = [];
+    gameOver = false;
+    gameStarted = false;
+    
+    // Сбрасываем таймер
+    if (timer) {
+        clearInterval(timer);
+        timer = null;
+    }
+    startTime = 0;
+    
+    // Очищаем контейнер
+    gameContainer.innerHTML = '';
+    
+    // Создаем интерфейс
+    createGameInterface();
+    
+    // Создаем игровое поле
+    createGameBoard();
+    
+    // Обновляем интерфейс
+    updateMinesCounter();
+    document.getElementById('timer').textContent = '00:00';
+    gameStatusDiv.textContent = '';
+    
+    console.log('Игра инициализирована:', gameState);
 }
 
 // Создание интерфейса игры
@@ -403,11 +435,11 @@ function createGameBoard() {
     // Создаем сетку
     const grid = document.createElement('div');
     grid.className = 'grid';
-    grid.style.gridTemplateColumns = `repeat(${gameState.width}, 1fr)`;
+    grid.style.gridTemplateColumns = `repeat(${gridW}, 40px)`;
     
     // Создаем клетки
-    for (let x = 0; x < gameState.width; x++) {
-        for (let y = 0; y < gameState.height; y++) {
+    for (let x = 0; x < gridW; x++) {
+        for (let y = 0; y < gridH; y++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
             
@@ -445,7 +477,8 @@ function createGameBoard() {
                 isLongPress = false;
             });
             
-            // Сохраняем клетку в массиве
+            // Сохраняем клетку в массивы
+            board.push(cell);
             gameState.gameBoard.push(cell);
             grid.appendChild(cell);
         }
@@ -453,7 +486,7 @@ function createGameBoard() {
     
     // Добавляем сетку на страницу
     gameBoardDiv.appendChild(grid);
-    console.log('Игровое поле создано');
+    console.log('Игровое поле создано:', board.length, 'клеток');
 }
 
 // Обновление счетчика флажков
@@ -585,7 +618,7 @@ function initializeGame() {
     mines = gameState.mines;
     revealed = gameState.revealed;
     flags = gameState.flags;
-    board = gameState.gameBoard;
+    board = [];
     gameOver = false;
     gameStarted = false;
     
@@ -596,15 +629,21 @@ function initializeGame() {
     }
     startTime = 0;
     
+    // Очищаем контейнер
+    gameContainer.innerHTML = '';
+    
+    // Создаем интерфейс
+    createGameInterface();
+    
+    // Создаем игровое поле
+    createGameBoard();
+    
     // Обновляем интерфейс
     updateMinesCounter();
     document.getElementById('timer').textContent = '00:00';
     gameStatusDiv.textContent = '';
     
     console.log('Игра инициализирована:', gameState);
-    
-    // Создаем игровое поле
-    createGameBoard();
 }
 
 // Создание игрового поля
