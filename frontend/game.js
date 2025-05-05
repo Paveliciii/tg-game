@@ -38,6 +38,10 @@ tg.expand();
 let gameBoard = [];
 let moves = [];
 
+// Добавляем новые глобальные переменные
+let isFlagMode = false;
+let remainingMines = 0;
+
 // DOM элементы
 const modal = document.getElementById('modal');
 const openModalBtn = document.getElementById('openModal');
@@ -53,6 +57,10 @@ const errorMessageDiv = document.getElementById('error-message');
 const gameBoardDiv = document.getElementById('game-board');
 const gameStatusDiv = document.getElementById('game-status');
 
+// Добавляем новые DOM элементы
+const flagModeBtn = document.getElementById('flag-mode');
+const minesCounter = document.getElementById('mines-counter');
+
 // Обработчики событий
 openModalBtn.addEventListener('click', () => modal.showModal());
 closeModalBtn.addEventListener('click', () => modal.close());
@@ -61,6 +69,12 @@ helpBtn.addEventListener('click', () => helpContainer.style.display = 'block');
 closeHelpBtn.addEventListener('click', () => helpContainer.style.display = 'none');
 viewPastGamesBtn.addEventListener('click', showPastGames);
 closeHistoryBtn.addEventListener('click', () => pastGamesContainer.style.display = 'none');
+
+// Добавляем обработчик для кнопки режима флажков
+flagModeBtn.addEventListener('click', () => {
+    isFlagMode = !isFlagMode;
+    flagModeBtn.classList.toggle('active');
+});
 
 // Начальный экран с выбором сложности
 function showDifficultySelection() {
@@ -191,59 +205,86 @@ function clearMines() {
 }
 
 // Обработка клика по клетке
-function handleCellClick(cell) {
+function handleCellClick(x, y, event) {
   if (gameOver) return;
   
-  const index = parseInt(cell.dataset.index);
-  const x = Math.floor(index / gridH);
-  const y = index % gridH;
+  const cell = gameBoard[x * height + y];
   
-  if (flags[x][y]) return;
-  
-  if (!gameStarted) {
-    gameStarted = true;
-    startTime = Date.now();
-    if (timer) clearInterval(timer);
-    timer = setInterval(updateTimer, 1000);
-    
-    // Первый клик не должен быть на мину
-    do {
-      clearMines();
-      placeMines(x, y);
-    } while (calcNear(x, y) !== 0);
+  // Если клетка уже открыта и на ней цифра, пробуем открыть соседние клетки
+  if (revealed[x][y] && cell.textContent) {
+    handleChordClick(x, y);
+    return;
   }
   
-  if (mines[x][y] === 1) {
+  // Если режим флажков активен
+  if (isFlagMode) {
+    toggleFlag(x, y);
+    return;
+  }
+  
+  // Нельзя открывать клетки с флажками
+  if (flags[x][y]) return;
+  
+  // Записываем ход
+  moves.push({ x, y, result: mines[x][y] ? 'Мина' : 'Безопасно' });
+  
+  if (mines[x][y]) {
     gameOver = true;
     revealAll();
-    clearInterval(timer);
-    tg.showAlert('💥 Бум! Игра окончена.');
+    gameStatusDiv.textContent = '💥 Игра окончена!';
+    tg.showPopup({
+      title: 'Игра окончена',
+      message: '💥 Вы попали на мину!',
+      buttons: [{
+        type: 'ok',
+        text: 'Новая игра'
+      }]
+    }).then(() => {
+      modal.showModal();
+    });
+    saveGame(false);
   } else {
     reveal(x, y);
-    checkWin();
+    if (checkWin()) {
+      gameOver = true;
+      gameStatusDiv.textContent = '�� Победа!';
+      tg.showPopup({
+        title: 'Победа!',
+        message: '🎉 Поздравляем! Вы нашли все мины!',
+        buttons: [{
+          type: 'ok',
+          text: 'Новая игра'
+        }]
+      }).then(() => {
+        modal.showModal();
+      });
+      saveGame(true);
+    }
   }
 }
 
 // Обработка установки флага
-function toggleFlag(cell) {
-  if (gameOver || !cell) return;
-  
-  const index = parseInt(cell.dataset.index);
-  const x = Math.floor(index / gridH);
-  const y = index % gridH;
-  
+function toggleFlag(x, y) {
   if (revealed[x][y]) return;
   
-  if (!gameStarted) {
-    gameStarted = true;
-    startTime = Date.now();
-    if (timer) clearInterval(timer);
-    timer = setInterval(updateTimer, 1000);
+  const cell = gameBoard[x * height + y];
+  
+  if (flags[x][y]) {
+    flags[x][y] = false;
+    cell.classList.remove('flagged');
+    remainingMines++;
+  } else {
+    if (remainingMines > 0) {
+      flags[x][y] = true;
+      cell.classList.add('flagged');
+      remainingMines--;
+    } else {
+      tg.showAlert('Все флажки уже использованы!');
+      return;
+    }
   }
   
-  flags[x][y] = !flags[x][y];
-  cell.classList.toggle('flagged');
-  updateFlagCounter();
+  updateMinesCounter();
 }
 
 // Инициализация игры
@@ -319,24 +360,24 @@ function createGameBoard() {
       cell.classList.add('cell');
       cell.dataset.index = x * gridH + y;
       
-      cell.addEventListener('click', () => handleCellClick(cell));
+      cell.addEventListener('click', (e) => handleCellClick(x, y, e));
       cell.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        toggleFlag(cell);
+        toggleFlag(x, y);
       });
       
       // Поддержка мобильных устройств
       let touchTimeout;
       cell.addEventListener('touchstart', () => {
         touchTimeout = setTimeout(() => {
-          toggleFlag(cell);
+          toggleFlag(x, y);
         }, 500);
       });
       
       cell.addEventListener('touchend', (e) => {
         if (touchTimeout) {
           clearTimeout(touchTimeout);
-          handleCellClick(cell);
+          handleCellClick(x, y, e);
         }
       });
       
@@ -457,7 +498,12 @@ function initializeGame() {
     moves = [];
     revealed = Array(width).fill().map(() => Array(height).fill(false));
     mines = Array(width).fill().map(() => Array(height).fill(false));
+    flags = Array(width).fill().map(() => Array(height).fill(false));
     gameBoard = [];
+    remainingMines = mineCount;
+    
+    // Обновляем счетчик мин
+    updateMinesCounter();
     
     // Очищаем статус игры
     gameStatusDiv.textContent = '';
@@ -481,7 +527,8 @@ function createBoard() {
             cell.dataset.x = x;
             cell.dataset.y = y;
             
-            cell.addEventListener('click', () => handleClick(x, y));
+            // Добавляем обработчики событий
+            cell.addEventListener('click', (e) => handleCellClick(x, y, e));
             
             gameBoardDiv.appendChild(cell);
             gameBoard.push(cell);
@@ -503,112 +550,41 @@ function placeMines() {
     }
 }
 
-// Обработка клика по клетке
-function handleClick(x, y) {
-    if (gameOver || revealed[x][y]) return;
-    
-    // Записываем ход
-    moves.push({ x, y, result: mines[x][y] ? 'Мина' : 'Безопасно' });
-    
-    if (mines[x][y]) {
-        gameOver = true;
-        revealAll();
-        gameStatusDiv.textContent = '💥 Игра окончена!';
-        tg.showPopup({
-            title: 'Игра окончена',
-            message: '💥 Вы попали на мину!',
-            buttons: [{
-                type: 'ok',
-                text: 'Новая игра'
-            }]
-        }).then(() => {
-            modal.showModal();
-        });
-        saveGame(false);
-    } else {
-        reveal(x, y);
-        if (checkWin()) {
-            gameOver = true;
-            gameStatusDiv.textContent = '🎉 Победа!';
-            tg.showPopup({
-                title: 'Победа!',
-                message: '🎉 Поздравляем! Вы нашли все мины!',
-                buttons: [{
-                    type: 'ok',
-                    text: 'Новая игра'
-                }]
-            }).then(() => {
-                modal.showModal();
-            });
-            saveGame(true);
-        }
-    }
+// Функция обновления счетчика мин
+function updateMinesCounter() {
+    minesCounter.textContent = `Мины: ${remainingMines}`;
 }
 
-// Открытие клетки
-function reveal(x, y) {
-    if (x < 0 || x >= width || y < 0 || y >= height || revealed[x][y]) return;
+// Функция для открытия клеток вокруг цифры
+function handleChordClick(x, y) {
+    const number = parseInt(gameBoard[x * height + y].textContent);
+    if (!number) return;
     
-    revealed[x][y] = true;
-    const cell = gameBoard[x * height + y];
-    cell.classList.add('revealed');
-    
-    const nearbyMines = countNearbyMines(x, y);
-    if (nearbyMines === 0) {
-        // Если рядом нет мин, открываем соседние клетки
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dy = -1; dy <= 1; dy++) {
-                reveal(x + dx, y + dy);
-            }
-        }
-    } else {
-        cell.textContent = nearbyMines;
-        cell.classList.add(`color-${nearbyMines}`);
-    }
-}
-
-// Подсчет мин вокруг клетки
-function countNearbyMines(x, y) {
-    let count = 0;
+    // Подсчитываем количество флажков вокруг
+    let flagCount = 0;
     for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
             const newX = x + dx;
             const newY = y + dy;
-            if (newX >= 0 && newX < width && newY >= 0 && newY < height && mines[newX][newY]) {
-                count++;
+            if (newX >= 0 && newX < width && newY >= 0 && newY < height && flags[newX][newY]) {
+                flagCount++;
             }
         }
     }
-    return count;
-}
-
-// Открытие всех клеток
-function revealAll() {
-    for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) {
-            const cell = gameBoard[x * height + y];
-            cell.classList.add('revealed');
-            if (mines[x][y]) {
-                cell.classList.add('mine');
-            } else {
-                const nearbyMines = countNearbyMines(x, y);
-                if (nearbyMines > 0) {
-                    cell.textContent = nearbyMines;
-                    cell.classList.add(`color-${nearbyMines}`);
+    
+    // Если количество флажков совпадает с цифрой
+    if (flagCount === number) {
+        // Открываем все не отмеченные клетки вокруг
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                const newX = x + dx;
+                const newY = y + dy;
+                if (newX >= 0 && newX < width && newY >= 0 && newY < height && !flags[newX][newY] && !revealed[newX][newY]) {
+                    handleCellClick(newX, newY);
                 }
             }
         }
     }
-}
-
-// Проверка победы
-function checkWin() {
-    for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) {
-            if (!mines[x][y] && !revealed[x][y]) return false;
-        }
-    }
-    return true;
 }
 
 // Сохранение игры
