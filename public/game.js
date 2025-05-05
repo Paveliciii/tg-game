@@ -13,9 +13,9 @@ let bestTimes = {
 
 // Настройки для разных уровней сложности
 const difficulties = {
-  easy: { size: 5, mines: 5 },
-  medium: { size: 8, mines: 12 },
-  hard: { size: 10, mines: 20 }
+  easy: { size: 5, mineCount: 5 },
+  medium: { size: 8, mineCount: 12 },
+  hard: { size: 10, mineCount: 20 }
 };
 
 // Добавляем переменные для отслеживания долгого нажатия
@@ -75,7 +75,7 @@ function updateTimer() {
 
 // Инициализация игры
 function initGame() {
-  const { size, mines } = difficulties[difficulty];
+  const { size, mineCount } = difficulties[difficulty];
   
   gameContainer.innerHTML = '';
   board = [];
@@ -89,7 +89,7 @@ function initGame() {
   // Счетчик флажков
   const flagCounter = document.createElement('div');
   flagCounter.id = 'flag-counter';
-  flagCounter.textContent = mines;
+  flagCounter.textContent = mineCount;
   
   // Таймер
   const timerDisplay = document.createElement('div');
@@ -128,9 +128,9 @@ function initGame() {
   gameContainer.appendChild(boardElement);
   
   // Генерируем мины
-  const mines = new Set();
-  while (mines.size < difficulties[difficulty].mines) {
-    mines.add(Math.floor(Math.random() * size * size));
+  const minePositions = new Set();
+  while (minePositions.size < mineCount) {
+    minePositions.add(Math.floor(Math.random() * size * size));
   }
   
   // Создаем ячейки
@@ -138,7 +138,7 @@ function initGame() {
     const cell = document.createElement('div');
     cell.classList.add('cell');
     cell.dataset.index = i;
-    cell.dataset.mine = mines.has(i) ? 'true' : 'false';
+    cell.dataset.mine = minePositions.has(i) ? 'true' : 'false';
     
     // Обработка долгого нажатия
     cell.addEventListener('touchstart', (e) => {
@@ -226,8 +226,8 @@ function startGame() {
 // Обновление счетчика флажков
 function updateFlagCounter() {
   const flaggedCount = board.filter(cell => cell.classList.contains('flagged')).length;
-  const { mines } = difficulties[difficulty];
-  document.getElementById('flag-counter').textContent = mines - flaggedCount;
+  const { mines: mineCount } = difficulties[difficulty];
+  document.getElementById('flag-counter').textContent = mineCount - flaggedCount;
 }
 
 // Открытие ячейки
@@ -320,10 +320,10 @@ function revealAll() {
 
 // Проверка победы
 function checkWin() {
-  const { size, mines } = difficulties[difficulty];
+  const { size, mineCount } = difficulties[difficulty];
   const revealed = board.filter(cell => cell.classList.contains('revealed')).length;
   
-  if (revealed === size * size - mines) {
+  if (revealed === size * size - mineCount) {
     gameOver = true;
     clearInterval(timer);
     
@@ -364,7 +364,7 @@ function toggleFlag(cell) {
   
   // Проверяем, не превышаем ли лимит флажков
   const flaggedCount = board.filter(cell => cell.classList.contains('flagged')).length;
-  const mineCount = difficulties[difficulty].mines;
+  const mineCount = difficulties[difficulty].mineCount;
   
   if (cell.classList.contains('flagged')) {
     cell.classList.remove('flagged');
