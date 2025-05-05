@@ -107,19 +107,55 @@ body {
 
 .cell.flagged {
   position: relative;
+  background: #ffd700;
+  transition: background-color 0.2s ease;
 }
 
 .cell.flagged:after {
   content: '🚩';
   font-size: 20px;
+  animation: flagAppear 0.3s ease;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes flagAppear {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
 }
 
 .cell.correct-flag {
   background: #4CAF50;
+  animation: correctFlag 0.5s ease;
 }
 
 .cell.wrong-flag {
   background: #ff4444;
+  animation: wrongFlag 0.5s ease;
+}
+
+@keyframes correctFlag {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes wrongFlag {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+  100% { transform: translateX(0); }
 }
 
 /* Цветовое кодирование цифр */

@@ -212,7 +212,16 @@ function revealCell(cell) {
 
 // Обработка клика по ячейке
 function handleCellClick(cell) {
-  if (gameOver || cell.classList.contains('revealed') || cell.classList.contains('flagged')) return;
+  if (gameOver || cell.classList.contains('revealed')) return;
+  
+  // Если ячейка помечена флажком, не открываем её
+  if (cell.classList.contains('flagged')) {
+    // Если это двойной клик по цифре, проверяем возможность быстрого открытия
+    if (cell.classList.contains('revealed') && cell.textContent) {
+      quickReveal(cell);
+    }
+    return;
+  }
   
   // Первый клик никогда не должен быть на мину
   if (!gameStarted) {
@@ -239,6 +248,51 @@ function handleCellClick(cell) {
     tg.showAlert('💥 Бум! Игра окончена.');
   } else {
     revealCell(cell);
+    checkWin();
+  }
+}
+
+// Быстрое открытие ячеек при правильной установке флажков
+function quickReveal(cell) {
+  const index = parseInt(cell.dataset.index);
+  const size = difficulties[difficulty].size;
+  const row = Math.floor(index / size);
+  const col = index % size;
+  const count = parseInt(cell.textContent);
+  
+  // Подсчитываем количество флажков вокруг
+  let flaggedCount = 0;
+  let adjacentCells = [];
+  
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+      const newRow = row + i;
+      const newCol = col + j;
+      if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+        const adjacentIndex = newRow * size + newCol;
+        const adjacentCell = board[adjacentIndex];
+        
+        if (adjacentCell.classList.contains('flagged')) {
+          flaggedCount++;
+        } else if (!adjacentCell.classList.contains('revealed')) {
+          adjacentCells.push(adjacentCell);
+        }
+      }
+    }
+  }
+  
+  // Если количество флажков соответствует цифре, открываем остальные ячейки
+  if (flaggedCount === count) {
+    adjacentCells.forEach(adjacentCell => {
+      if (adjacentCell.dataset.mine === 'true') {
+        gameOver = true;
+        revealAll();
+        clearInterval(timer);
+        tg.showAlert('💥 Бум! Игра окончена.');
+      } else {
+        revealCell(adjacentCell);
+      }
+    });
     checkWin();
   }
 }
@@ -319,16 +373,23 @@ function initGame() {
     // Правый клик для установки флажка
     cell.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      if (gameOver) return;
+      if (gameOver || cell.classList.contains('revealed')) return;
       
       if (!gameStarted) {
         startGame();
       }
       
-      if (!cell.classList.contains('revealed')) {
-        cell.classList.toggle('flagged');
-        updateFlagCounter();
+      // Проверяем, не превышаем ли лимит флажков
+      const flaggedCount = board.filter(cell => cell.classList.contains('flagged')).length;
+      const mineCount = difficulties[difficulty].mines;
+      
+      if (cell.classList.contains('flagged')) {
+        cell.classList.remove('flagged');
+      } else if (flaggedCount < mineCount) {
+        cell.classList.add('flagged');
       }
+      
+      updateFlagCounter();
     });
     
     boardElement.appendChild(cell);
