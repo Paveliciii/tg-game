@@ -18,6 +18,10 @@ const difficulties = {
   hard: { size: 10, mines: 20 }
 };
 
+// Добавляем переменные для отслеживания долгого нажатия
+let longPressTimer;
+let isLongPress = false;
+
 // Initialize Telegram WebApp
 const tg = window.Telegram.WebApp;
 tg.expand();
@@ -136,24 +140,39 @@ function initGame() {
     cell.dataset.index = i;
     cell.dataset.mine = mines.has(i) ? 'true' : 'false';
     
+    // Обработка долгого нажатия
+    cell.addEventListener('touchstart', (e) => {
+      isLongPress = false;
+      longPressTimer = setTimeout(() => {
+        isLongPress = true;
+        toggleFlag(cell);
+      }, 500);
+    });
+    
+    cell.addEventListener('touchend', (e) => {
+      clearTimeout(longPressTimer);
+      if (!isLongPress) {
+        handleCellClick(cell);
+      }
+    });
+    
+    cell.addEventListener('touchmove', (e) => {
+      clearTimeout(longPressTimer);
+    });
+    
     // Левый клик для открытия ячейки
     cell.addEventListener('click', (e) => {
-      handleCellClick(cell);
+      // Проверяем, не было ли это долгое нажатие на мобильном
+      if (!isLongPress) {
+        handleCellClick(cell);
+      }
     });
     
     // Правый клик для установки флажка
     cell.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      if (gameOver) return;
-      
-      if (!gameStarted) {
-        startGame();
-      }
-      
-      if (!cell.classList.contains('revealed')) {
-        cell.classList.toggle('flagged');
-        updateFlagCounter();
-      }
+      e.stopPropagation();
+      toggleFlag(cell);
     });
     
     boardElement.appendChild(cell);
@@ -333,6 +352,27 @@ function checkWin() {
     
     tg.showAlert(message);
   }
+}
+
+// Функция установки/снятия флажка
+function toggleFlag(cell) {
+  if (gameOver || cell.classList.contains('revealed')) return;
+  
+  if (!gameStarted) {
+    startGame();
+  }
+  
+  // Проверяем, не превышаем ли лимит флажков
+  const flaggedCount = board.filter(cell => cell.classList.contains('flagged')).length;
+  const mineCount = difficulties[difficulty].mines;
+  
+  if (cell.classList.contains('flagged')) {
+    cell.classList.remove('flagged');
+  } else if (flaggedCount < mineCount) {
+    cell.classList.add('flagged');
+  }
+  
+  updateFlagCounter();
 }
 
 // Запускаем игру с экрана выбора сложности

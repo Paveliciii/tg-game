@@ -18,6 +18,10 @@ const difficulties = {
   hard: { size: 10, mines: 20 }
 };
 
+// Добавляем переменные для отслеживания долгого нажатия
+let longPressTimer;
+let isLongPress = false;
+
 // Initialize Telegram WebApp
 const tg = window.Telegram.WebApp;
 tg.expand();
@@ -297,6 +301,27 @@ function quickReveal(cell) {
   }
 }
 
+// Функция установки/снятия флажка
+function toggleFlag(cell) {
+  if (gameOver || cell.classList.contains('revealed')) return;
+  
+  if (!gameStarted) {
+    startGame();
+  }
+  
+  // Проверяем, не превышаем ли лимит флажков
+  const flaggedCount = board.filter(cell => cell.classList.contains('flagged')).length;
+  const mineCount = difficulties[difficulty].mines;
+  
+  if (cell.classList.contains('flagged')) {
+    cell.classList.remove('flagged');
+  } else if (flaggedCount < mineCount) {
+    cell.classList.add('flagged');
+  }
+  
+  updateFlagCounter();
+}
+
 // Инициализация игры
 function initGame() {
   const size = difficulties[difficulty].size;
@@ -365,31 +390,39 @@ function initGame() {
     cell.dataset.index = i;
     cell.dataset.mine = minePositions.has(i) ? 'true' : 'false';
     
+    // Обработка долгого нажатия
+    cell.addEventListener('touchstart', (e) => {
+      isLongPress = false;
+      longPressTimer = setTimeout(() => {
+        isLongPress = true;
+        toggleFlag(cell);
+      }, 500);
+    });
+    
+    cell.addEventListener('touchend', (e) => {
+      clearTimeout(longPressTimer);
+      if (!isLongPress) {
+        handleCellClick(cell);
+      }
+    });
+    
+    cell.addEventListener('touchmove', (e) => {
+      clearTimeout(longPressTimer);
+    });
+    
     // Левый клик для открытия ячейки
-    cell.addEventListener('click', () => {
-      handleCellClick(cell);
+    cell.addEventListener('click', (e) => {
+      // Проверяем, не было ли это долгое нажатие на мобильном
+      if (!isLongPress) {
+        handleCellClick(cell);
+      }
     });
     
     // Правый клик для установки флажка
     cell.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      if (gameOver || cell.classList.contains('revealed')) return;
-      
-      if (!gameStarted) {
-        startGame();
-      }
-      
-      // Проверяем, не превышаем ли лимит флажков
-      const flaggedCount = board.filter(cell => cell.classList.contains('flagged')).length;
-      const mineCount = difficulties[difficulty].mines;
-      
-      if (cell.classList.contains('flagged')) {
-        cell.classList.remove('flagged');
-      } else if (flaggedCount < mineCount) {
-        cell.classList.add('flagged');
-      }
-      
-      updateFlagCounter();
+      e.stopPropagation();
+      toggleFlag(cell);
     });
     
     boardElement.appendChild(cell);
