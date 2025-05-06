@@ -78,7 +78,10 @@ flagModeBtn.addEventListener('click', toggleFlagMode);
 // Переключение режима флажков
 function toggleFlagMode() {
     gameState.isFlagMode = !gameState.isFlagMode;
-    flagModeBtn.classList.toggle('active');
+    const flagModeBtn = document.getElementById('flag-mode');
+    if (flagModeBtn) {
+        flagModeBtn.classList.toggle('active');
+    }
 }
 
 // Начальный экран с выбором сложности
@@ -122,10 +125,11 @@ function formatTime(ms) {
 
 // Обновление таймера
 function updateTimer() {
-  if (!gameStarted || gameOver) return;
-  
-  const currentTime = Date.now() - startTime;
-  document.getElementById('timer').textContent = formatTime(currentTime);
+    const timerElement = document.getElementById('timer');
+    if (!timerElement || !gameStarted || gameState.gameOver) return;
+    
+    const currentTime = Date.now() - startTime;
+    timerElement.textContent = formatTime(currentTime);
 }
 
 // Проверка выхода за пределы поля
@@ -224,7 +228,7 @@ function handleCellClick(x, y) {
         return;
     }
     
-    const cellIndex = x * gameState.height + y;
+    const cellIndex = (x - 1) * gameState.height + (y - 1);
     const cell = gameState.gameBoard[cellIndex];
     
     // Если клетка уже открыта и на ней цифра, пробуем открыть соседние клетки
@@ -235,7 +239,7 @@ function handleCellClick(x, y) {
     
     // Если режим флажков активен
     if (gameState.isFlagMode) {
-        toggleFlag(x, y);
+        handleRightClick(x, y);
         return;
     }
     
@@ -252,32 +256,35 @@ function handleCellClick(x, y) {
         console.log('First click - initializing game');
         gameStarted = true;
         startTime = Date.now();
+        if (timer) clearInterval(timer);
         timer = setInterval(updateTimer, 1000);
+        
         // Clear and place mines avoiding first click
-        for (let i = 0; i < gameState.width; i++) {
-            for (let j = 0; j < gameState.height; j++) {
+        for (let i = 1; i <= gameState.width; i++) {
+            for (let j = 1; j <= gameState.height; j++) {
                 gameState.mines[i][j] = false;
             }
         }
         placeMines(x, y);
     }
     
-    if (gameState.mines[x][y]) {
+    if (gameState.mines[x][y] === true) {
         // Hit a mine
         gameState.gameOver = true;
         revealAll();
         gameStatusDiv.textContent = '💥 Game Over!';
-        tg.showPopup({
-            title: 'Game Over',
-            message: '💥 You hit a mine!',
-            buttons: [{
-                type: 'ok',
-                text: 'New Game'
-            }]
-        }).then(() => {
-            modal.showModal();
-        });
-        saveGame(false);
+        
+        // Use alert instead of popup for game over
+        if (tg.platform === 'tdesktop' || tg.platform === 'web') {
+            alert('💥 You hit a mine! Game Over!');
+        } else {
+            tg.showAlert('💥 You hit a mine! Game Over!');
+        }
+        
+        // Show difficulty selection after a short delay
+        setTimeout(() => {
+            showDifficultySelection();
+        }, 1500);
     } else {
         reveal(x, y);
         if (checkWin()) {
@@ -286,17 +293,19 @@ function handleCellClick(x, y) {
             const gameTime = endTime - startTime;
             
             gameStatusDiv.textContent = '🎉 Victory!';
-            tg.showPopup({
-                title: 'Congratulations!',
-                message: `🎉 You won! Time: ${formatTime(gameTime)}`,
-                buttons: [{
-                    type: 'ok',
-                    text: 'New Game'
-                }]
-            }).then(() => {
-                modal.showModal();
-            });
-            saveGame(true);
+            
+            // Use alert instead of popup for victory
+            const message = `🎉 Congratulations! You won!\nTime: ${formatTime(gameTime)}`;
+            if (tg.platform === 'tdesktop' || tg.platform === 'web') {
+                alert(message);
+            } else {
+                tg.showAlert(message);
+            }
+            
+            // Show difficulty selection after a short delay
+            setTimeout(() => {
+                showDifficultySelection();
+            }, 1500);
         }
     }
 }
@@ -383,39 +392,41 @@ function initGame() {
 
 // Создание интерфейса игры
 function createGameInterface() {
-  const gameHeader = document.createElement('div');
-  gameHeader.className = 'game-header';
-  
-  const flagCounter = document.createElement('div');
-  flagCounter.id = 'flag-counter';
-  flagCounter.textContent = numMines;
-  
-  const timerDisplay = document.createElement('div');
-  timerDisplay.id = 'timer';
-  timerDisplay.textContent = '00:00';
-  
-  const restartButton = document.createElement('button');
-  restartButton.id = 'restart-button';
-  restartButton.textContent = '🔄';
-  restartButton.addEventListener('click', () => {
-    clearInterval(timer);
-    initGame();
-  });
-  
-  const backButton = document.createElement('button');
-  backButton.id = 'back-button';
-  backButton.textContent = '⬅️';
-  backButton.addEventListener('click', () => {
-    clearInterval(timer);
-    showDifficultySelection();
-  });
-  
-  gameHeader.appendChild(flagCounter);
-  gameHeader.appendChild(timerDisplay);
-  gameHeader.appendChild(restartButton);
-  gameHeader.appendChild(backButton);
-  
-  gameContainer.appendChild(gameHeader);
+    const gameHeader = document.createElement('div');
+    gameHeader.className = 'game-header';
+    
+    const timerDisplay = document.createElement('div');
+    timerDisplay.id = 'timer';
+    timerDisplay.textContent = '00:00';
+    
+    const minesDisplay = document.createElement('div');
+    minesDisplay.id = 'mines-counter';
+    minesDisplay.textContent = `Mines: ${gameState.remainingMines}`;
+    
+    const controlsContainer = document.createElement('div');
+    controlsContainer.className = 'controls-container';
+    
+    const flagModeButton = document.createElement('button');
+    flagModeButton.id = 'flag-mode';
+    flagModeButton.className = 'control-button';
+    flagModeButton.textContent = '🚩';
+    flagModeButton.onclick = toggleFlagMode;
+    
+    const restartButton = document.createElement('button');
+    restartButton.className = 'control-button';
+    restartButton.textContent = '🔄';
+    restartButton.onclick = showDifficultySelection;
+    
+    controlsContainer.appendChild(flagModeButton);
+    controlsContainer.appendChild(restartButton);
+    
+    gameHeader.appendChild(minesDisplay);
+    gameHeader.appendChild(timerDisplay);
+    gameHeader.appendChild(controlsContainer);
+    
+    gameContainer.innerHTML = '';
+    gameContainer.appendChild(gameHeader);
+    gameContainer.appendChild(gameBoardDiv);
 }
 
 // Создание игрового поля
@@ -564,6 +575,12 @@ function initializeGame() {
     gameState.gameOver = false;
     gameState.isFlagMode = false;
     flagModeBtn.classList.remove('active');
+    gameStarted = false;
+    
+    if (timer) {
+        clearInterval(timer);
+        timer = null;
+    }
     
     // Initialize arrays with border padding (12x12 instead of 10x10)
     const paddedSize = gameState.width + 2;
@@ -572,45 +589,14 @@ function initializeGame() {
     gameState.flags = Array(paddedSize).fill().map(() => Array(paddedSize).fill(false));
     gameState.gameBoard = [];
     
-    // Place mines randomly (approximately 20% chance for each cell)
-    let placedMines = 0;
-    for (let i = 1; i <= gameState.width; i++) {
-        for (let j = 1; j <= gameState.height; j++) {
-            if (Math.random() < 0.2) { // 20% chance for a mine
-                gameState.mines[i][j] = true;
-                placedMines++;
-            }
-        }
-    }
+    // Create interface first
+    createGameInterface();
     
-    // Update mine count
-    gameState.mineCount = placedMines;
-    gameState.remainingMines = placedMines;
-    
-    // Calculate numbers for each cell
-    for (let i = 1; i <= gameState.width; i++) {
-        for (let j = 1; j <= gameState.height; j++) {
-            if (!gameState.mines[i][j]) {
-                let count = 0;
-                // Check all 8 adjacent cells
-                for (let di = -1; di <= 1; di++) {
-                    for (let dj = -1; dj <= 1; dj++) {
-                        if (gameState.mines[i + di][j + dj]) {
-                            count++;
-                        }
-                    }
-                }
-                gameState.mines[i][j] = count;
-            }
-        }
-    }
-    
-    // Clear status and update counters
-    gameStatusDiv.textContent = '';
-    updateMinesCounter();
-    
-    // Create game board
+    // Then create board
     createBoard();
+    
+    // Update display
+    updateMinesCounter();
 }
 
 // Create game board
@@ -646,6 +632,12 @@ function createBoard() {
                 if (touchTimeout) {
                     clearTimeout(touchTimeout);
                     handleCellClick(i, j);
+                }
+            });
+            
+            cell.addEventListener('touchmove', () => {
+                if (touchTimeout) {
+                    clearTimeout(touchTimeout);
                 }
             });
             
