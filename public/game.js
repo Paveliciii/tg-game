@@ -775,17 +775,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Показ прошлых игр
     function showPastGames() {
-        if (!pastGamesContainer || !gameList) return;
+        const pastGamesContainer = document.getElementById('past-games-container');
+        const gameList = document.getElementById('game-list');
+        
+        if (!pastGamesContainer || !gameList) {
+            console.error('Required elements not found:', {
+                pastGamesContainer: !!pastGamesContainer,
+                gameList: !!gameList
+            });
+            return;
+        }
         
         const games = JSON.parse(localStorage.getItem('minesweeper_games') || '[]');
         gameList.innerHTML = '';
         
-        games.forEach(game => {
+        if (games.length === 0) {
             const li = document.createElement('li');
-            const date = new Date(game.timestamp);
-            li.textContent = `${date.toLocaleDateString()} ${date.toLocaleTimeString()} - ${game.size} - ${game.mines} mines - ${game.result}`;
+            li.textContent = 'No games played yet';
             gameList.appendChild(li);
-        });
+        } else {
+            games.forEach(game => {
+                const li = document.createElement('li');
+                const date = new Date(game.timestamp);
+                li.textContent = `${date.toLocaleDateString()} ${date.toLocaleTimeString()} - ${game.size} - ${game.mines} мин - ${game.result}`;
+                gameList.appendChild(li);
+            });
+        }
         
         pastGamesContainer.style.display = 'block';
     }
