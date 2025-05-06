@@ -1,6 +1,8 @@
 const express = require('express');
 const fetch = require('node-fetch');
+const path = require('path');
 require('dotenv').config();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -9,7 +11,11 @@ const WEBAPP_URL = process.env.WEBAPP_URL;
 
 app.use(express.json());
 app.use(express.static('public'));
-app.use('/frontend', express.static('frontend'));
+
+// Handle all routes by serving index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 
 // Telegram webhook
 app.post(`/webhook/${BOT_TOKEN}`, async (req, res) => {
@@ -37,4 +43,7 @@ app.post(`/webhook/${BOT_TOKEN}`, async (req, res) => {
   res.sendStatus(200);
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Static files being served from: ${path.join(__dirname, '../public')}`);
+});
