@@ -15,31 +15,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Body parser middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from the public directory
 const publicPath = path.join(__dirname, '../public');
-app.use(express.static(publicPath, {
-  extensions: ['html', 'css', 'js'],
-  index: 'index.html'
-}));
+console.log('Public path:', publicPath);
 
-// Handle all routes by serving index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(publicPath, 'index.html'));
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).send('Internal Server Error');
-});
-
-// 404 handler
-app.use((req, res) => {
-  console.log('404 Not Found:', req.url);
-  res.status(404).sendFile(path.join(publicPath, 'index.html'));
-});
+// Static file middleware
+app.use(express.static(publicPath));
 
 // Telegram webhook
 app.post(`/webhook/${BOT_TOKEN}`, async (req, res) => {
@@ -72,7 +57,27 @@ app.post(`/webhook/${BOT_TOKEN}`, async (req, res) => {
   }
 });
 
+// Handle all other routes by serving index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).send('Internal Server Error');
+});
+
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Static files being served from: ${publicPath}`);
+  // List files in public directory
+  const fs = require('fs');
+  try {
+    const files = fs.readdirSync(publicPath);
+    console.log('Files in public directory:', files);
+  } catch (error) {
+    console.error('Error reading public directory:', error);
+  }
 });
