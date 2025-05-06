@@ -1,10 +1,10 @@
-const gameContainer = document.getElementById('game');
+const gameContainer = document.getElementById('game-container');
 let board = [];
 let gameOver = false;
 let gameStarted = false;
 let startTime = 0;
 let timer = null;
-let difficulty = 'easy';
+let difficulty = 'medium';
 let bestTimes = {
   easy: localStorage.getItem('bestTime_easy') || null,
   medium: localStorage.getItem('bestTime_medium') || null,
@@ -13,9 +13,9 @@ let bestTimes = {
 
 // Настройки для разных уровней сложности
 const difficulties = {
-  easy: { size: 5, mineCount: 5 },
-  medium: { size: 8, mineCount: 12 },
-  hard: { size: 10, mineCount: 20 }
+  easy: { size: 8, mineCount: 10 },
+  medium: { size: 10, mineCount: 15 },
+  hard: { size: 12, mineCount: 25 }
 };
 
 // Состояние игры
@@ -36,23 +36,23 @@ tg.expand();
 
 // Глобальные переменные состояния игры
 const gameState = {
-    width: 0,
-    height: 0,
-    mineCount: 0,
+    width: 10,
+    height: 10,
+    mineCount: 15,
     mines: [],
     revealed: [],
     flags: [],
     gameBoard: [],
     gameOver: false,
     isFlagMode: false,
-    remainingMines: 0
+    remainingMines: 15
 };
 
 // DOM элементы
 const modal = document.getElementById('modal');
 const openModalBtn = document.getElementById('openModal');
-const closeModalBtn = document.getElementById('closeModal');
-const startBtn = document.getElementById('startBtn');
+const closeModalBtn = document.getElementById('close-modal');
+const startBtn = document.getElementById('start-btn');
 const helpBtn = document.getElementById('help');
 const closeHelpBtn = document.getElementById('close-help');
 const viewPastGamesBtn = document.getElementById('view-past-games');
@@ -86,33 +86,32 @@ function toggleFlagMode() {
 
 // Начальный экран с выбором сложности
 function showDifficultySelection() {
-  gameContainer.innerHTML = '';
-  const title = document.createElement('h2');
-  title.textContent = 'Выберите сложность:';
-  gameContainer.appendChild(title);
-
-  const difficultyButtons = document.createElement('div');
-  difficultyButtons.className = 'difficulty-buttons';
-  
-  ['easy', 'medium', 'hard'].forEach(diff => {
-    const button = document.createElement('button');
-    button.textContent = diff === 'easy' ? 'Легкий' : diff === 'medium' ? 'Средний' : 'Сложный';
-    button.className = 'difficulty-button';
+    if (!gameContainer) return;
     
-    // Показываем лучшее время, если оно есть
-    if (bestTimes[diff]) {
-      button.textContent += ` (${formatTime(parseInt(bestTimes[diff]))})`;
-    }
+    gameContainer.innerHTML = '';
+    const difficultyDiv = document.createElement('div');
+    difficultyDiv.className = 'difficulty-selection';
     
-    button.addEventListener('click', () => {
-      difficulty = diff;
-      initGame();
+    const title = document.createElement('h2');
+    title.textContent = 'Select Difficulty';
+    difficultyDiv.appendChild(title);
+    
+    Object.entries(difficulties).forEach(([diff, settings]) => {
+        const button = document.createElement('button');
+        button.className = 'difficulty-button';
+        button.textContent = `${diff.charAt(0).toUpperCase() + diff.slice(1)} (${settings.size}x${settings.size}, ${settings.mineCount} mines)`;
+        button.addEventListener('click', () => {
+            difficulty = diff;
+            gameState.width = settings.size;
+            gameState.height = settings.size;
+            gameState.mineCount = settings.mineCount;
+            gameState.remainingMines = settings.mineCount;
+            initializeGame();
+        });
+        difficultyDiv.appendChild(button);
     });
     
-    difficultyButtons.appendChild(button);
-  });
-  
-  gameContainer.appendChild(difficultyButtons);
+    gameContainer.appendChild(difficultyDiv);
 }
 
 // Форматирование времени в мм:сс
@@ -755,5 +754,4 @@ function showError(message) {
 modal.showModal();
 
 // Запускаем игру с экрана выбора сложности
-showDifficultySelection();
 showDifficultySelection();

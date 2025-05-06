@@ -1,71 +1,65 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Сапёр</title>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <h1>💣 Сапёр</h1>
-  
-  <div class="menu">
-    <button id="view-past-games">История игр</button>
-    <button id="help">Помощь</button>
-  </div>
-  <button id="openModal">Начать новую игру</button>
-
-  <div class="game-controls">
-    <button id="flag-mode" class="mode-button">🚩 Режим флажков</button>
-    <div id="mines-counter">Мины: 0</div>
-  </div>
-
-  <div id="help-container" class="helper">
-    <h3>Справка</h3>
-    <p>
-      <strong>Как играть:</strong><br>
-      1. Нажмите "Начать новую игру"<br>
-      2. Выберите размер поля и количество мин<br>
-      3. Используйте кнопку "Режим флажков" для переключения режима<br>
-      4. В обычном режиме нажимайте на клетки, чтобы открыть их<br>
-      5. В режиме флажков отмечайте предполагаемые мины<br>
-      6. Нажмите на цифру, чтобы открыть соседние клетки, если вокруг достаточно флажков<br>
-      7. Избегайте мин и откройте все безопасные клетки!<br>
-    </p>
-    <button id="close-help">Закрыть</button>
-  </div>
-
-  <dialog id="modal">
-    <div class="settings">
-      <div class="closeBlock">
-        <button id="closeModal">✕</button>
-      </div>
-      <label for="width">Ширина:</label>
-      <input type="number" id="width" value="10" min="5" max="16">
-
-      <label for="height">Высота:</label>
-      <input type="number" id="height" value="10" min="5" max="16">
-
-      <label for="mines">Мины:</label>
-      <input type="number" id="mines" value="10" min="1" max="50">
-
-      <div id="error-message"></div>
-      <button id="startBtn">Начать игру</button>
+    <div id="game-container">
+        <div id="game-board"></div>
+        <div id="game-status"></div>
     </div>
-  </dialog>
 
-  <div id="past-games-container">
-    <h3>История игр</h3>
-    <ul id="game-list"></ul>
-    <button id="close-history">Закрыть</button>
-  </div>
+    <!-- Difficulty Selection Modal -->
+    <dialog id="modal">
+        <h2>Game Settings</h2>
+        <div class="settings-form">
+            <div class="form-group">
+                <label for="width">Width (5-16):</label>
+                <input type="number" id="width" min="5" max="16" value="10">
+            </div>
+            <div class="form-group">
+                <label for="height">Height (5-16):</label>
+                <input type="number" id="height" min="5" max="16" value="10">
+            </div>
+            <div class="form-group">
+                <label for="mines">Mines:</label>
+                <input type="number" id="mines" min="1" value="10">
+            </div>
+            <div class="error-message" id="error-message"></div>
+            <div class="button-group">
+                <button id="start-btn">Start Game</button>
+                <button id="close-modal">Cancel</button>
+            </div>
+        </div>
+    </dialog>
 
-  <div class="game-container">
-    <div id="game-board"></div>
-    <p id="game-status"></p>
-  </div>
+    <!-- Help Modal -->
+    <div id="help-container" class="modal-container" style="display: none;">
+        <div class="modal-content">
+            <h2>How to Play</h2>
+            <ul>
+                <li>Click a cell to reveal it</li>
+                <li>Right-click or long-press to place a flag</li>
+                <li>Numbers show how many mines are adjacent</li>
+                <li>Flag all mines to win!</li>
+            </ul>
+            <button id="close-help">Close</button>
+        </div>
+    </div>
 
-  <script src="game.js"></script>
+    <!-- Game History Modal -->
+    <div id="past-games-container" class="modal-container" style="display: none;">
+        <div class="modal-content">
+            <h2>Game History</h2>
+            <ul id="game-list"></ul>
+            <button id="close-history">Close</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
 </body>
 </html> 
