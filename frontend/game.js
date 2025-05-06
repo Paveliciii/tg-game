@@ -1,8 +1,4 @@
 const gameContainer = document.getElementById('game');
-let board = [];
-let gameOver = false;
-let gameStarted = false;
-let startTime = 0;
 let timer = null;
 let difficulty = 'easy';
 let bestTimes = {
@@ -13,9 +9,9 @@ let bestTimes = {
 
 // Настройки для разных уровней сложности
 const difficulties = {
-  easy: { size: 5, mineCount: 5 },
-  medium: { size: 8, mineCount: 12 },
-  hard: { size: 10, mineCount: 20 }
+  easy: { size: 8, mineCount: 10 },
+  medium: { size: 10, mineCount: 15 },
+  hard: { size: 12, mineCount: 25 }
 };
 
 // Состояние игры
@@ -44,8 +40,16 @@ const gameState = {
     flags: [],
     gameBoard: [],
     gameOver: false,
+    gameStarted: false,
+    startTime: 0,
     isFlagMode: false,
-    remainingMines: 0
+    remainingMines: 0,
+    difficulty: 'easy',
+    bestTimes: {
+        easy: localStorage.getItem('bestTime_easy') || null,
+        medium: localStorage.getItem('bestTime_medium') || null,
+        hard: localStorage.getItem('bestTime_hard') || null
+    }
 };
 
 // DOM элементы
@@ -97,12 +101,12 @@ function showDifficultySelection() {
     button.className = 'difficulty-button';
     
     // Показываем лучшее время, если оно есть
-    if (bestTimes[diff]) {
-      button.textContent += ` (${formatTime(parseInt(bestTimes[diff]))})`;
+    if (gameState.bestTimes[diff]) {
+      button.textContent += ` (${formatTime(parseInt(gameState.bestTimes[diff]))})`;
     }
     
     button.addEventListener('click', () => {
-      difficulty = diff;
+      gameState.difficulty = diff;
       initGame();
     });
     
@@ -122,10 +126,32 @@ function formatTime(ms) {
 
 // Обновление таймера
 function updateTimer() {
-  if (!gameStarted || gameOver) return;
-  
-  const currentTime = Date.now() - startTime;
-  document.getElementById('timer').textContent = formatTime(currentTime);
+    if (!gameState.gameStarted || gameState.gameOver) return;
+    
+    const currentTime = Date.now() - gameState.startTime;
+    const timerElement = document.getElementById('timer');
+    if (timerElement) {
+        timerElement.textContent = formatTime(currentTime);
+    }
+}
+
+// Запуск таймера
+function startTimer() {
+    if (timer) {
+        clearInterval(timer);
+    }
+    gameState.startTime = Date.now();
+    gameState.gameStarted = true;
+    timer = setInterval(updateTimer, 1000);
+    updateTimer(); // Немедленное обновление для избежания задержки
+}
+
+// Остановка таймера
+function stopTimer() {
+    if (timer) {
+        clearInterval(timer);
+        timer = null;
+    }
 }
 
 // Проверка выхода за пределы поля
@@ -156,7 +182,7 @@ function reveal(x, y) {
   }
   
   const cellIndex = x * gridH + y;
-  const cell = board[cellIndex];
+  const cell = mines[cellIndex];
   
   revealed[x][y] = true;
   cell.classList.add('revealed');
@@ -183,7 +209,7 @@ function reveal(x, y) {
 // Обновление внешнего вида клетки
 function updateCellAppearance(x, y) {
   const index = x * gridH + y;
-  const cell = board[index];
+  const cell = mines[index];
   
   if (revealed[x][y]) {
     cell.classList.add('revealed');
@@ -230,11 +256,11 @@ function handleCellClick(x, y) {
     return;
   }
   
-  const cellIndex = x * gameState.height + y;
-  const cell = gameState.gameBoard[cellIndex];
+  const cellIndex = x * gridH + y;
+  const cell = mines[cellIndex];
   
   // Если клетка уже открыта и на ней цифра, пробуем открыть соседние клетки
-  if (gameState.revealed[x][y] && cell.textContent) {
+  if (revealed[x][y] && cell.textContent) {
     handleChordClick(x, y);
     return;
   }
@@ -246,14 +272,14 @@ function handleCellClick(x, y) {
   }
   
   // Нельзя открывать клетки с флажками
-  if (gameState.flags[x][y]) {
+  if (flags[x][y]) {
     console.log('Cell is flagged');
     return;
   }
   
   console.log('Revealing cell:', x, y);
   
-  if (gameState.mines[x][y]) {
+  if (mines[x][y]) {
     // Попали на мину
     gameState.gameOver = true;
     revealAll();
@@ -293,17 +319,17 @@ function handleCellClick(x, y) {
 function toggleFlag(x, y) {
   if (revealed[x][y]) return;
   
-  const cell = board[x * gridH + y];
+  const cell = mines[x * gridH + y];
   
   if (flags[x][y]) {
     flags[x][y] = false;
     cell.classList.remove('flagged');
-    remainingMines++;
+    gameState.remainingMines++;
   } else {
-    if (remainingMines > 0) {
+    if (gameState.remainingMines > 0) {
       flags[x][y] = true;
       cell.classList.add('flagged');
-      remainingMines--;
+      gameState.remainingMines--;
     } else {
       tg.showAlert('Все флажки уже использованы!');
       return;
@@ -315,8 +341,8 @@ function toggleFlag(x, y) {
 
 // Инициализация игры
 function initGame() {
-  const size = difficulties[difficulty].size;
-  numMines = difficulties[difficulty].mineCount;
+  const size = difficulties[gameState.difficulty].size;
+  numMines = difficulties[gameState.difficulty].mineCount;
   gridW = size;
   gridH = size;
   
@@ -326,9 +352,9 @@ function initGame() {
   revealed = Array(gridW).fill().map(() => Array(gridH).fill(false));
   
   gameContainer.innerHTML = '';
-  board = [];
-  gameOver = false;
-  gameStarted = false;
+  gameState.gameBoard = [];
+  gameState.gameOver = false;
+  gameState.gameStarted = false;
   
   // Создаем интерфейс
   createGameInterface();
@@ -414,7 +440,7 @@ function createGameBoard() {
       });
       
       boardElement.appendChild(cell);
-      board.push(cell);
+      gameState.gameBoard.push(cell);
     }
   }
   
@@ -437,7 +463,7 @@ function revealAll() {
   for (let x = 0; x < gridW; x++) {
     for (let y = 0; y < gridH; y++) {
       const index = x * gridH + y;
-      const cell = board[index];
+      const cell = mines[index];
       
       if (mines[x][y] === 1) {
         cell.classList.add('mine');
@@ -468,31 +494,31 @@ function checkWin() {
   }
   
   if (unrevealedSafeCells === 0) {
-    gameOver = true;
-    clearInterval(timer);
+    gameState.gameOver = true;
+    stopTimer();
     
     // Помечаем все мины флажками
     for (let x = 0; x < gridW; x++) {
       for (let y = 0; y < gridH; y++) {
         if (mines[x][y] === 1 && !flags[x][y]) {
           flags[x][y] = true;
-          board[x * gridH + y].classList.add('flagged');
+          mines[x * gridH + y].classList.add('flagged');
         }
       }
     }
     
-    const gameTime = Date.now() - startTime;
+    const gameTime = Date.now() - gameState.startTime;
     let newRecord = false;
     
-    if (!bestTimes[difficulty] || gameTime < parseInt(bestTimes[difficulty])) {
-      bestTimes[difficulty] = gameTime.toString();
-      localStorage.setItem(`bestTime_${difficulty}`, gameTime);
+    if (!gameState.bestTimes[gameState.difficulty] || gameTime < parseInt(gameState.bestTimes[gameState.difficulty])) {
+      gameState.bestTimes[gameState.difficulty] = gameTime.toString();
+      localStorage.setItem(`bestTime_${gameState.difficulty}`, gameTime);
       newRecord = true;
     }
     
     const message = newRecord 
       ? `🎉 Победа! Новый рекорд: ${formatTime(gameTime)}!` 
-      : `🎉 Победа! Ваше время: ${formatTime(gameTime)}. Рекорд: ${formatTime(parseInt(bestTimes[difficulty]))}`;
+      : `🎉 Победа! Ваше время: ${formatTime(gameTime)}. Рекорд: ${formatTime(parseInt(gameState.bestTimes[gameState.difficulty]))}`;
     
     tg.showAlert(message);
   }
